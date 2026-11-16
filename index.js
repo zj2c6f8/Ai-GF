@@ -21,22 +21,13 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        // 📌 QR Code එක Logs වල පෙන්වීම
-        if (qr) {
-            console.log('\n========================================');
-            console.log('📌 පහත QR Code එක WhatsApp එකෙන් Scan කරන්න:');
-            console.log('========================================\n');
-            qrcode.generate(qr, { small: true });
-        }
+        sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
 
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('⚠️ Connection closed. Reconnecting:', shouldReconnect);
             if (shouldReconnect) {
-                setTimeout(startBot, 3000); // තත්පර 3කින් නැවත සම්බන්ධ වීම
+                setTimeout(startBot, 3000);
             }
         } else if (connection === 'open') {
             console.log('\n========================================');
@@ -45,6 +36,21 @@ async function startBot() {
             console.log('========================================\n');
         }
     });
+
+    // බොට් රෙජිස්ටර් වී නොමැති නම්, සර්වර් එක ඔපන් වුණාම Pairing Code එක ඉල්ලමු
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            try {
+                const code = await sock.requestPairingCode("94762108015"); // මෙතැනට ඔයාගේ බොට් නම්බර් එක තියෙනවා නේද කියලා බලන්න
+                console.log(`\n========================================`);
+                console.log(`🔗 YOUR WHATSAPP PAIRING CODE: ${code}`);
+                console.log(`========================================\n`);
+            } catch (err) {
+                console.log('❌ Pairing Code දෝෂයක්: ', err.message);
+            }
+        }, 8000);
+    }
+
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
