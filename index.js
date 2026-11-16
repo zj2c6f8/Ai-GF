@@ -12,12 +12,13 @@ const userStates = new Map(); // 'CHOOSING', 'GF', 'BF'
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
-    const sock = makeWASocket({
-        logger: pino({ level: 'silent' }),
-        printQRInTerminal: false, // අපි qrcode-terminal පාවිච්චි කරන නිසා මෙතන false තියන්න
-        auth: state,
-        browser: ["Mac OS", "Safari", "17.2.1"]
-    });
+const sock = makeWASocket({
+  logger: pino({ level: 'silent' }),
+  printQRInTerminal: false,
+  auth: state,
+  browser: ["Chrome", "Chrome", "1.0.0"],
+  usePairingCode: true // මේක අනිවාර්යයි!
+});
 
     sock.ev.on('creds.update', saveCreds);
 
@@ -48,7 +49,7 @@ async function startBot() {
             } catch (err) {
                 console.log('❌ Pairing Code දෝෂයක්: ', err.message);
             }
-        }, 8000);
+        }, 3000);
     }
 
 
