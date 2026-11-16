@@ -1,12 +1,12 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, delay } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const pino = require('pino');
+const qrcode = require('qrcode-terminal');
 
 // ⚙️ බොට්ගේ විස්තර
-const BOT_PHONE_NUMBER = "94762108015"; 
 const API_BASE = "https://api-nomo.zone.id/api/gemini?q=";
 
-// 🧠 මතකය තබාගැනීම සඳහා (User States & Chat Histories)
+// 🧠 මතකය තබාගැනීම සඳහා (User States)
 const userStates = new Map(); // 'CHOOSING', 'GF', 'BF'
 
 async function startBot() {
@@ -14,42 +14,35 @@ async function startBot() {
 
     const sock = makeWASocket({
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false,
+        printQRInTerminal: false, // අපි qrcode-terminal පාවිච්චි කරන නිසා මෙතන false තියන්න
         auth: state,
-        browser: ["𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧", "Chrome", "20.0.04"]
+        browser: ["Mac OS", "Safari", "17.2.1"]
     });
-
-        // Connection එක Open වුණාට පස්සේ Pairing Code එක ඉල්ලන විදිහට සෙට් කරමු
-    if (!sock.authState.creds.registered) {
-        sock.ev.on('connection.update', async (update) => {
-            const { connection } = update;
-            if (connection === 'open' || !sock.authState.creds.registered) {
-                // තත්පර 3ක් ඉඳලා Pairing Code එක ඉල්ලන්න
-                await delay(3000);
-                try {
-                    const code = await sock.requestPairingCode(BOT_PHONE_NUMBER);
-                    console.log(`\n========================================`);
-                    console.log(`🔗 YOUR WHATSAPP PAIRING CODE: ${code}`);
-                    console.log(`========================================\n`);
-                } catch (err) {
-                    console.log('❌ Pairing Code දෝෂයක්: ', err.message);
-                }
-            }
-        });
-    }
-
-
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+
+        // 📌 QR Code එක Logs වල පෙන්වීම
+        if (qr) {
+            console.log('\n========================================');
+            console.log('📌 පහත QR Code එක WhatsApp එකෙන් Scan කරන්න:');
+            console.log('========================================\n');
+            qrcode.generate(qr, { small: true });
+        }
+
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startBot();
+            console.log('⚠️ Connection closed. Reconnecting:', shouldReconnect);
+            if (shouldReconnect) {
+                setTimeout(startBot, 3000); // තත්පර 3කින් නැවත සම්බන්ධ වීම
+            }
         } else if (connection === 'open') {
+            console.log('\n========================================');
             console.log('✅ 𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘 සාර්ථකව WhatsApp එකට සම්බන්ධ වුණා!');
             console.log('👑 𝗯𝗼𝘁 𝗼𝘄𝗮𝗻𝗲𝗿 : 𝗦𝗜𝗧𝗛𝗨𝗪𝗔 💖');
+            console.log('========================================\n');
         }
     });
 
@@ -64,34 +57,23 @@ async function startBot() {
         if (!text) return;
 
         const textLower = text.trim().toLowerCase();
-
-        // 👤 යූසර්ගේ නම ලබා ගැනීම (WhatsApp Profile Name)
         let pushName = msg.pushName || "සුදු";
 
         try {
-            // 1️⃣ මුල් වතාවට එන කෙනෙක් නම් හෝ ස්ටේට් එකක් නැත්නම්
+            // 1️⃣ මුල් වතාවට එන කෙනෙක් නම්
             if (!userStates.has(sender)) {
-                if (textLower === 'hi' || textLower === 'hello' || textLower === 'හෙලෝ' || textLower === 'හායි' || textLower === 'menu' || textLower === 'start') {
-                    
-                    userStates.set(sender, 'CHOOSING');
+                userStates.set(sender, 'CHOOSING');
 
-                    const welcomeText = 
-                        `*✦ 𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘* \n\n` +
-                        `හායි *${pushName}*! මාව ඔයාගේ චැට් එකට සාදරයෙන් පිළිගන්නවා. 💖\n\n` +
-                        `ඔයාට මගෙන් කතා කරන්න ඕන කා විදිහටද?\n` +
-                        `👉 Reply කරන්න *'GF'* කියලා (Girlfriend කෙනෙක් වගේ)\n` +
-                        `👉 Reply කරන්න *'BF'* කියලා (Boyfriend කෙනෙක් වගේ)\n\n` +
-                        `*© ᴏᴡɴᴇʀ : 𝗦𝗜𝗧𝗛Ւ𝗪𝗔 💖*`;
+                const welcomeText = 
+                    `*✦ 𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘* \n\n` +
+                    `හායි *${pushName}*! මාව ඔයාගේ චැට් එකට සාදරයෙන් පිළිගන්නවා. 💖\n\n` +
+                    `ඔයාට මගෙන් කතා කරන්න ඕන කා විදිහටද?\n` +
+                    `👉 Reply කරන්න *'GF'* කියලා (Girlfriend කෙනෙක් වගේ)\n` +
+                    `👉 Reply කරන්න *'BF'* කියලා (Boyfriend කෙනෙක් වගේ)\n\n` +
+                    `*© ᴏᴡɴᴇʀ : 𝗦𝗜𝗧𝗛𝗨𝗪𝗔 💖*`;
 
-                    await sock.sendMessage(sender, { text: welcomeText }, { quoted: msg });
-                    return;
-                } else {
-                    userStates.set(sender, 'CHOOSING');
-                    await sock.sendMessage(sender, { 
-                        text: `✨ හායි *${pushName}*! *𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘* වෙත සාදරයෙන් පිළිගනිමු!\n\nකරුණාකර ඔබට අවශ්‍ය කවුදැයි තෝරන්න:\n1️⃣ *GF* (Girlfriend)\n2️⃣ *BF* (Boyfriend)\n\n*(ကျေးဇူးකර 'GF' හෝ 'BF' ලෙස රිප්ලයි කරන්න)*` 
-                    }, { quoted: msg });
-                    return;
-                }
+                await sock.sendMessage(sender, { text: welcomeText }, { quoted: msg });
+                return;
             }
 
             const currentState = userStates.get(sender);
@@ -116,7 +98,7 @@ async function startBot() {
                 }
             }
 
-            // 3️⃣ සාමාන්‍ය චැට් එක (GF හෝ BF ලෙස තෝරා අවසන් - නවතා ඇති තැන සිට)
+            // 3️⃣ සාමාන්‍ය චැට් එක (GF හෝ BF ලෙස තෝරා අවසන්)
             await sock.sendPresenceUpdate('composing', sender);
 
             let personaPrompt = "";
@@ -133,7 +115,7 @@ async function startBot() {
             const response = await axios.get(apiUrl);
             let replyText = response.data.reply || response.data.response || response.data.answer || `මගෙ පණ ${pushName}, මට පොඩි නෙට්වර්ක් අව්වක් වගේ. ආයෙත් කියන්නකෝ මේක! 🥺❤️`;
 
-            await delay(1200); // ස්වභාවිකව ටයිප් කරනවා වගේ පේන්න
+            await delay(1200);
             await sock.sendMessage(sender, { text: replyText }, { quoted: msg });
             await sock.sendPresenceUpdate('paused', sender);
 
