@@ -19,13 +19,20 @@ async function startBot() {
         browser: ["𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧", "Chrome", "20.0.04"]
     });
 
+    // රෙජිස්ටර් වී නොමැති නම්, සර්වර් එක කනෙක්ට් වෙන්න ටිකක් ඉඳලා කෝඩ් එක ඉල්ලමු
     if (!sock.authState.creds.registered) {
-        await delay(3000);
-        const code = await sock.requestPairingCode(BOT_PHONE_NUMBER);
-        console.log(`\n========================================`);
-        console.log(`🔗 YOUR WHATSAPP PAIRING CODE: ${code}`);
-        console.log(`========================================\n`);
+        console.log('⏳ WhatsApp සර්වර් එකට සම්බන්ධ වෙමින් පවතී, කරුණාකර මොහොතක් රැඳී සිටින්න...');
+        await delay(10000); // තත්පර 10 ක් ඉන්න
+        try {
+            const code = await sock.requestPairingCode(BOT_PHONE_NUMBER);
+            console.log(`\n========================================`);
+            console.log(`🔗 YOUR WHATSAPP PAIRING CODE: ${code}`);
+            console.log(`========================================\n`);
+        } catch (err) {
+            console.log('❌ Pairing Code එක ලබාගැනීමේ දෝෂයක්: ', err);
+        }
     }
+
 
     sock.ev.on('creds.update', saveCreds);
 
