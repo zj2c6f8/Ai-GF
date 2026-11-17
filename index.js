@@ -1,9 +1,9 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, delay } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 
 // ⚙️ බොට්ගේ විස්තර
+const BOT_PHONE_NUMBER = "94762108015"; 
 const API_BASE = "https://api-nomo.zone.id/api/gemini?q=";
 
 // 🧠 මතකය තබාගැනීම සඳහා (User States)
@@ -12,17 +12,16 @@ const userStates = new Map(); // 'CHOOSING', 'GF', 'BF'
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
-const sock = makeWASocket({
-  logger: pino({ level: 'silent' }),
-  printQRInTerminal: false,
-  auth: state,
-  browser: ["Chrome", "Chrome", "1.0.0"],
-  usePairingCode: true // මේක අනිවාර්යයි!
-});
+    const sock = makeWASocket({
+        logger: pino({ level: 'silent' }),
+        printQRInTerminal: false,
+        auth: state,
+        browser: ["Mac OS", "Safari", "17.2.1"]
+    });
 
     sock.ev.on('creds.update', saveCreds);
 
-        sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
 
         if (connection === 'close') {
@@ -33,7 +32,7 @@ const sock = makeWASocket({
         } else if (connection === 'open') {
             console.log('\n========================================');
             console.log('✅ 𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘 සාර්ථකව WhatsApp එකට සම්බන්ධ වුණා!');
-            console.log('👑 𝗯𝗼𝘁 𝗼𝘄𝗮𝗻𝗲𝗿 : 𝗦𝗜𝗧𝗛𝗨𝗪𝗔 💖');
+            console.log('👑 𝗯𝗼𝘁 𝗼𝘄𝗮𝗻𝗲𝗿 : 𝗦𝗜𝗧𝗛𝗨𝗪🇦 💖');
             console.log('========================================\n');
         }
     });
@@ -42,16 +41,15 @@ const sock = makeWASocket({
     if (!sock.authState.creds.registered) {
         setTimeout(async () => {
             try {
-                const code = await sock.requestPairingCode("94762108015"); // මෙතැනට ඔයාගේ බොට් නම්බර් එක තියෙනවා නේද කියලා බලන්න
+                const code = await sock.requestPairingCode(BOT_PHONE_NUMBER);
                 console.log(`\n========================================`);
                 console.log(`🔗 YOUR WHATSAPP PAIRING CODE: ${code}`);
                 console.log(`========================================\n`);
             } catch (err) {
                 console.log('❌ Pairing Code දෝෂයක්: ', err.message);
             }
-        }, 3000);
+        }, 8000);
     }
-
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
@@ -67,20 +65,29 @@ const sock = makeWASocket({
         let pushName = msg.pushName || "සුදු";
 
         try {
-            // 1️⃣ මුල් වතාවට එන කෙනෙක් නම්
+            // 1️⃣ මුල් වතාවට එන කෙනෙක් නම් හෝ ස්ටේට් එකක් නැත්නම්
             if (!userStates.has(sender)) {
-                userStates.set(sender, 'CHOOSING');
+                if (textLower === 'hi' || textLower === 'hello' || textLower === 'හෙලෝ' || textLower === 'හායි' || textLower === 'menu' || textLower === 'start') {
+                    
+                    userStates.set(sender, 'CHOOSING');
 
-                const welcomeText = 
-                    `*✦ 𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘* \n\n` +
-                    `හායි *${pushName}*! මාව ඔයාගේ චැට් එකට සාදරයෙන් පිළිගන්නවා. 💖\n\n` +
-                    `ඔයාට මගෙන් කතා කරන්න ඕන කා විදිහටද?\n` +
-                    `👉 Reply කරන්න *'GF'* කියලා (Girlfriend කෙනෙක් වගේ)\n` +
-                    `👉 Reply කරන්න *'BF'* කියලා (Boyfriend කෙනෙක් වගේ)\n\n` +
-                    `*© ᴏᴡɴᴇʀ : 𝗦𝗜𝗧𝗛𝗨𝗪𝗔 💖*`;
+                    const welcomeText = 
+                        `*✦ 𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘* \n\n` +
+                        `හායි *${pushName}*! මාව ඔයාගේ චැට් එකට සාදරයෙන් පිළිගන්නවා. 💖\n\n` +
+                        `ඔයාට මගෙන් කතා කරන්න ඕන කා විදිහටද?\n` +
+                        `👉 Reply කරන්න *'GF'* කියලා (Girlfriend කෙනෙක් වගේ)\n` +
+                        `👉 Reply කරන්න *'BF'* කියලා (Boyfriend කෙනෙක් වගේ)\n\n` +
+                        `*© ᴏᴡɴᴇʀ : 𝗦𝗜𝗧𝗛𝗨𝗪𝗔 💖*`;
 
-                await sock.sendMessage(sender, { text: welcomeText }, { quoted: msg });
-                return;
+                    await sock.sendMessage(sender, { text: welcomeText }, { quoted: msg });
+                    return;
+                } else {
+                    userStates.set(sender, 'CHOOSING');
+                    await sock.sendMessage(sender, { 
+                        text: `✨ හායි *${pushName}*! *𝗔𝗜 𝗚𝗙 / 𝗕𝗙 𝗕𝗢𝗧 💘* වෙත සාදරයෙන් පිළිගනිමු!\n\nකරුණාකර ඔබට අවශ්‍ය කවුදැයි තෝරන්න:\n1️⃣ *GF* (Girlfriend)\n2️⃣ *BF* (Boyfriend)\n\n*(ကျေးဇူးකර 'GF' හෝ 'BF' ලෙස රිප්ලයි කරන්න)*` 
+                    }, { quoted: msg });
+                    return;
+                }
             }
 
             const currentState = userStates.get(sender);
@@ -119,8 +126,20 @@ const sock = makeWASocket({
             const encodedQuery = encodeURIComponent(fullQuery);
             const apiUrl = `${API_BASE}${encodedQuery}`;
 
-            const response = await axios.get(apiUrl);
-            let replyText = response.data.reply || response.data.response || response.data.answer || `මගෙ පණ ${pushName}, මට පොඩි නෙට්වර්ක් අව්වක් වගේ. ආයෙත් කියන්නකෝ මේක! 🥺❤️`;
+            let replyText = "";
+            try {
+                const response = await axios.get(apiUrl, { timeout: 15000 });
+                const resData = response.data;
+                
+                if (typeof resData === 'string') {
+                    replyText = resData;
+                } else {
+                    replyText = resData.reply || resData.response || resData.answer || resData.text || JSON.stringify(resData);
+                }
+            } catch (apiErr) {
+                console.error("API Fetch Error Details:", apiErr.message);
+                replyText = `මගෙ පණ ${pushName}, මට පොඩි නෙට්වර්ක් අව්වක් වගේ. ආයෙත් කියන්නකෝ මේක! 🥺❤️`;
+            }
 
             await delay(1200);
             await sock.sendMessage(sender, { text: replyText }, { quoted: msg });
